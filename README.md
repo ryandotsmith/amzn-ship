@@ -1,6 +1,6 @@
 AMZN-ship is an opinionated system that will setup and manage your production server deployments on AWS. The system is designed around ephemeral servers, multi-environment access points, centralized app config management, and zero-downtime deploys.
 
-AMZN-ship is an implementation of the architecture defined in the [**Web Application Delivery Using AWS**](http://bit.ly/1axWLBn) article. AMZN-ship assumes the AMI is built with amzn-base.
+AMZN-ship is an implementation of the architecture defined in the [**Application Platform on AWS**](http://r.32k.io/app-platforms-on-aws) article. AMZN-ship assumes the AMI is built with amzn-base.
 
 ## Setup
 
