@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+
+require 'net/ssh'
+require 'aws'
+require 'digest/md5'
+
+module Releaser
+  RELEASE_PREFIX = "r"
+
+  def self.execute(app, env, src_location)
+    ver = tag_source(src_location)
+    archive = archive_source(app, env, ver, src_location)
+    put_source(app, env, ver, archive)
+    copy_config(app, env, ver)
+    cleanup_archive(archive)
+    $stdout.puts("release=#{ver}")
+  end
+
+  def self.copy_config(app, env, ver)
+    key = "#{app}/#{env}"
+    obj = s3.
+      buckets['amzn-releases.koa.la'].
+      objects[key+"/env"]
+    if !obj.exists?
+      obj = s3.
+        buckets['amzn-releases.koa.la'].
+        objects[key+"/env"]
+        obj.write('')
+      $stdout.puts("at=copy-config status=create-empty-config")
+    end
+    obj.copy_to(key + "/#{ver}/env")
+    obj.copy_to(key + "/current/env")
+  end
+
+  def self.put_source(app, env, ver, archive_location)
+    key = "#{app}/#{env}"
+    obj = write_file(key + "/#{ver}/source.tar.gz", archive_location)
+    obj.copy_to(key+ "/current/source.tar.gz")
+  end
+
+  def self.write_file(key, file)
+    s3.
+      buckets['amzn-releases.koa.la'].
+      objects[key].
+      write(file: file)
+  end
+
+  def self.tag_source(location)
+    latest = latest_tag(location)
+    next_n = latest.match(/\d+/)[0].to_i + 1
+    `cd #{location} && git tag #{RELEASE_PREFIX}#{next_n}`
+    latest_tag(location)
+  end
+
+  def self.latest_tag(location)
+    cmd = "git tag -l |  grep '#{RELEASE_PREFIX}[0-9]' | sort -nr | head -n 1"
+    res = `cd #{location} && #{cmd}`.strip
+    res.length.zero? ? "#{RELEASE_PREFIX}0" : res
+  end
+
+  def self.cleanup_archive(location)
+    `rm #{location}`
+  end
+
+  def self.archive_source(app, env, ver, location)
+    tar_name = [app, env].join('-') + '.tar.gz'
+    `cd #{location} && git archive -o #{tar_name} #{ver}`
+    [location, tar_name].join('/')
+  end
+
+  def self.s3
+    @s3 ||= begin
+      AWS::S3.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+end
+
+if $0 == __FILE__
+  Releaser.execute(ARGV[0], ARGV[1], ARGV[2])
+end

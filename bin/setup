@@ -1,0 +1,216 @@
+#!/usr/bin/env ruby
+
+require 'aws'
+
+module Setup
+  POLICY_DOC = File.read('templates/iam_assume_role_policy.json')
+  SECURITY_GROUP_NAME = 'amzn'
+  KEY_PAIR_NAME = 'amzn'
+  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  ROLE_NAME = 'amzn'
+  ZONES = ["us-east-1a", "us-east-1b", "us-east-1d"]
+  AMI = ENV['AMI']
+  ITYPE = 'm3.2xlarge'
+  DESIRED = 2
+  COOLDOWN = 10
+  MIN = 2
+  MAX = 10
+
+  def self.execute(app, env)
+    create_sec_group
+    create_key_pair
+    create_role
+    create_role_policy
+    create_policy
+    create_asg(app, env, BASE_RELEASE + "/#{app}/#{env}/current")
+  end
+
+  def self.create_role
+    list = iam.client.list_roles
+    raise("EROLESLISTTOOBIG") if list[:is_truncated]
+    role = list[:roles].find {|r| r[:role_name] == ROLE_NAME}
+    if role.nil?
+      resp = iam.client.create_role(
+        role_name: ROLE_NAME,
+        assume_role_policy_document: POLICY_DOC)
+      $stdout.puts("at=create-role status=role-created")
+      resp.data[:role]
+    else
+      $stdout.puts("at=create-role status=role-exists")
+      role
+    end
+  end
+
+  def self.create_role_policy
+    policy = AWS::IAM::Policy.new
+    policy.allow(:actions => ["s3:Get*","s3:List*"], :resources => '*')
+    iam.client.put_role_policy(
+      role_name: ROLE_NAME,
+      policy_name: ROLE_NAME,
+      policy_document: policy.to_json)
+    $stdout.puts("at=create-role-policy status=put-role-policy")
+  end
+
+  def self.create_policy
+    iprof = iam.client.list_instance_profiles_for_role(role_name: ROLE_NAME)
+    if iprof[:instance_profiles].length.zero?
+      iam.client.create_instance_profile(
+        instance_profile_name: ROLE_NAME)
+      iam.client.add_role_to_instance_profile(
+        instance_profile_name: ROLE_NAME,
+        role_name: ROLE_NAME)
+      $stdout.puts("at=create-policy status=policy-created")
+    else
+      $stdout.puts("at=create-policy status=policy-exists")
+    end
+  end
+
+  def self.create_sec_group
+    sec_group = ec2.
+      security_groups.
+      filter('group-name', SECURITY_GROUP_NAME).
+      to_a.
+      first
+    if sec_group && sec_group.exists?
+      $stdout.puts("at=create-sec-group status=sg-exists")
+    else
+      sec_group = ec2.security_groups.create(SECURITY_GROUP_NAME)
+      sec_group.allow_ping
+      sec_group.authorize_ingress(:tcp, 8000)
+      sec_group.authorize_ingress(:tcp, 22)
+      $stdout.puts("at=create_sec_group status=sg-created")
+    end
+  end
+
+  def self.create_key_pair
+    kp = ec2.
+      key_pairs.
+      filter('key-name', KEY_PAIR_NAME).
+      to_a.
+      first
+    if kp && kp.exists?
+      $stdout.puts("at=create-key-pair status=key-pair-exists")
+    else
+      kp = ec2.key_pairs.create(KEY_PAIR_NAME)
+      path = "#{KEY_PAIR_NAME}.pem"
+      File.open(path, "w+") {|f| f.write(kp.private_key)}
+      $stdout.puts("at=create-key-pair status=created-key-pair file=#{path}")
+    end
+  end
+
+  def self.create_asg(app, env, release)
+    g = asg.groups[key(app, env)]
+    if g.exists?
+      $stdout.puts("at=asg-exists group=#{g.name}")
+      return g
+    else
+      g = asg.groups.create(key(app, env),
+        launch_configuration: lconfig(app, env, release).name,
+        availability_zones: ZONES,
+        load_balancers: [find_or_create_elb(app, env)],
+        min_size: MIN,
+        max_size: MAX,
+        default_cooldown: COOLDOWN,
+        desired_capacity: DESIRED,
+        tags: [{key: "Release", value: release, propagate_at_launch: true}])
+      $stdout.puts("at=create-group new-group=#{g.name}")
+      return g
+    end
+  end
+
+  def self.find_or_create_elb(app, env)
+    lb = elb.load_balancers[key(app, env)]
+    if lb.exists?
+      $stdout.puts("at=use-existing-lb elb=#{lb.name}")
+      return lb
+    else
+      lb = elb.load_balancers.create(key(app, env),
+        availability_zones: ZONES,
+        listeners: {
+          port: 80,
+          protocol: 'HTTP',
+          instance_port: 8000,
+          instance_protocol: 'HTTP'
+        }
+      )
+      $stdout.puts("at=created-lb elb=#{lb.name}")
+      lb.configure_health_check(
+        healthy_threshold: 2,
+        unhealthy_threshold: 2,
+        interval: 5,
+        timeout: 4,
+        target: "HTTP:8000/"
+      )
+      $stdout.puts("at=configured-elb-healthcheck elb=#{lb.name}")
+      return lb
+    end
+  end
+
+  def self.lconfig(app, env, release)
+    conf = asg.launch_configurations[key(app, env)]
+    if  conf.exists?
+      $stdout.puts("at=reuse-launch-config config=#{conf.name}")
+      return conf
+    else
+      conf = asg.launch_configurations.create(key(app, env), AMI, ITYPE,
+        security_groups: [SECURITY_GROUP_NAME],
+        key_pair: KEY_PAIR_NAME,
+        user_data: compile_user_data(app, release),
+        iam_instance_profile: ROLE_NAME)
+      $stdout.puts("at=create-launch-config")
+      return conf
+    end
+  end
+
+  def self.key(app, env)
+    [app, env].join('-')
+  end
+
+  def self.compile_user_data(app, release)
+    script = File.read("templates/user-data")
+    script.gsub!("{{APP}}", app)
+    script.gsub!("{{RELEASE_URL}}", release)
+    return script
+  end
+
+  def self.iam
+    @iam ||= begin
+      AWS::IAM.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+  def self.ec2
+    @ec2 ||= begin
+      AWS::EC2.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+  def self.asg
+    @asg ||= begin
+      AWS::AutoScaling.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+  def self.elb
+    @elb ||= begin
+      AWS::ELB.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+end
+
+if $0 == __FILE__
+  Setup.execute(ARGV[0], ARGV[1])
+end

@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+
+require 'net/ssh'
+require 'aws'
+
+module Deployer
+  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  CMD = "/home/deploy/bin/deploy"
+  KEYS = "./amzn.pem"
+
+  def self.execute(app, env, ver)
+    ver = 'current' if ver.nil? || ver == ""
+    g = asg.groups[key(app, env)]
+    if g.exists?
+      g.ec2_instances.each do |instance|
+        next if instance.status != :running
+        release_url = BASE_RELEASE + "/#{app}/#{env}/#{ver}"
+        deploy(instance.public_dns_name, app, release_url)
+      end
+    else
+      $stdout.puts("unable to find group")
+    end
+  end
+
+  def self.deploy(host, app, release)
+    Net::SSH.start(host, 'ubuntu', keys: KEYS) do |session|
+      puts session.exec("sudo su deploy -c '#{CMD} #{release}'")
+    end
+  end
+
+  def self.key(app, env)
+    [app, env].join('-')
+  end
+
+  def self.asg
+    @asg ||= begin
+      AWS::AutoScaling.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+end
+
+if $0 == __FILE__
+  Deployer.execute(ARGV[0], ARGV[1], ARGV[2])
+end

@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+require 'aws'
+
+module TerminateDeploy
+
+  def self.execute(app, env)
+    g = asg.groups[key(app, env)]
+    if g.exists?
+      g.ec2_instances.each do |instance|
+        g.load_balancers.each do |lb|
+          lb.instances.deregister(instance)
+          $stdout.puts("at=deregister instance=#{instance.id} elb=#{lb.name}")
+        end
+      end
+      conf = g.launch_configuration
+      g.delete!
+      while g.exists?
+        sleep(1)
+        $stdout.puts("at=waiting-for-group-to-terminate")
+      end
+      $stdout.puts("at=delete-asg")
+      conf.delete
+      $stdout.puts("at=delete-launch-config")
+    else
+    end
+  end
+
+  def self.key(app, env)
+    "#{app}-#{env}"
+  end
+
+  def self.asg
+    @asg ||= begin
+      AWS::AutoScaling.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+end
+
+if $0 == __FILE__
+  TerminateDeploy.execute(ARGV[0], ARGV[1])
+end

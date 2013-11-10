@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+
+require 'aws'
+
+module ASGUpdater
+  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  ZONES = ["us-east-1a", "us-east-1b", "us-east-1d"]
+  ITYPE = 'm3.2xlarge'
+
+  def self.execute(app, env, ami)
+    release = BASE_RELEASE + "/#{app}/#{env}/current"
+    g = asg.groups[key(app, env)]
+    if g.exists?
+      g.suspend_all_processes
+      $stdout.puts("at=asg-suspended group=#{g.name}")
+      old_conf = g.launch_configuration
+      new_conf = create_launch_configuration(g, app, env, ami, release)
+      $stdout.puts("at=asg-launch-config-created group=#{g.name}")
+      g.update(launch_configuration: new_conf)
+      old_conf.delete
+      $stdout.puts("at=asg-launch-config-deleted group=#{g.name}")
+      g.resume_all_processes
+      $stdout.puts("at=asg-resumed group=#{g.name}")
+    else
+      $stdout.puts("at=missing-group")
+    end
+  end
+
+  def self.create_launch_configuration(g, app, env, ami, release)
+    asg.launch_configurations.create(key(app, env)+"-#{Time.now.to_i}", ami, ITYPE,
+      security_groups: ['amzn-flow'],
+      key_pair: 'amzn-flow',
+      user_data: compile_user_data(app, release),
+      iam_instance_profile: 'amzn-flow')
+  end
+
+  def self.key(app, env)
+    [app, env].join('-')
+  end
+
+  def self.compile_user_data(app, release)
+    script = File.read("templates/user-data")
+    script.gsub!("{{APP}}", app)
+    script.gsub!("{{RELEASE_URL}}", release)
+    return script
+  end
+
+  def self.asg
+    @asg ||= begin
+      AWS::AutoScaling.new(
+        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
+        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
+      )
+    end
+  end
+
+end
+
+if $0 == __FILE__
+  ASGUpdater.execute(ARGV[0], ARGV[1], ARGV[2])
+end
