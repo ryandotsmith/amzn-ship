@@ -6,15 +6,14 @@ module Setup
   POLICY_DOC = File.read('templates/iam_assume_role_policy.json')
   SECURITY_GROUP_NAME = 'amzn'
   KEY_PAIR_NAME = 'amzn'
-  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  BASE_RELEASE = ENV['RELEASE_BUCKET']
   ROLE_NAME = 'amzn'
   ZONES = ["us-east-1a", "us-east-1b", "us-east-1d"]
   AMI = ENV['AMI']
-  ITYPE = 'm3.2xlarge'
-  DESIRED = 2
-  COOLDOWN = 10
-  MIN = 2
-  MAX = 10
+  ITYPE = ENV['INSTANCE_TYPE']
+  COOLDOWN = ENV['ASG_COOLDOWN'].to_i
+  MIN = ENV['MIN_INSTANCES'].to_i
+  MAX = ENV['MAX_INSTANCES'].to_i
 
   def self.execute(app, env)
     create_sec_group
@@ -111,7 +110,7 @@ module Setup
         min_size: MIN,
         max_size: MAX,
         default_cooldown: COOLDOWN,
-        desired_capacity: DESIRED,
+        desired_capacity: MIN,
         tags: [{key: "Release", value: release, propagate_at_launch: true}])
       $stdout.puts("at=create-group new-group=#{g.name}")
       return g

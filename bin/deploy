@@ -4,7 +4,7 @@ require 'net/ssh'
 require 'aws'
 
 module Deployer
-  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  BASE_RELEASE = ENV['RELEASE_BUCKET']
   CMD = "/home/deploy/bin/deploy"
   KEYS = "./amzn.pem"
 

@@ -1,11 +1,14 @@
 #!/usr/bin/env ruby
 
+require 'uri'
 require 'net/ssh'
 require 'aws'
 require 'digest/md5'
 
 module Releaser
-  RELEASE_PREFIX = "r"
+  BASE_RELEASE = ENV['RELEASE_BUCKET']
+  BASE_RELEASE_URL = URI(BASE_RELEASE)
+  RELEASE_PREFIX = ENV['RELEASE_PREFIX']
 
   def self.execute(app, env, src_location)
     ver = tag_source(src_location)
@@ -19,11 +22,11 @@ module Releaser
   def self.copy_config(app, env, ver)
     key = "#{app}/#{env}"
     obj = s3.
-      buckets['amzn-releases.koa.la'].
+      buckets[BASE_RELEASE_URL.host].
       objects[key+"/env"]
     if !obj.exists?
       obj = s3.
-        buckets['amzn-releases.koa.la'].
+        buckets[BASE_RELEASE_URL.host].
         objects[key+"/env"]
         obj.write('')
       $stdout.puts("at=copy-config status=create-empty-config")
@@ -40,7 +43,7 @@ module Releaser
 
   def self.write_file(key, file)
     s3.
-      buckets['amzn-releases.koa.la'].
+      buckets[BASE_RELEASE_URL.host].
       objects[key].
       write(file: file)
   end
