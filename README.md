@@ -2,10 +2,21 @@ AMZN-ship is an opinionated system that will setup and manage your production se
 
 AMZN-ship is an implementation of the architecture defined in the [**Web Application Delivery Using AWS**](http://bit.ly/1axWLBn) article. AMZN-ship assumes the AMI is built with amzn-base.
 
-## Dependencies
+## Setup
 
 * AWS Account with IAM credentials.
 * [Ruby AWS SDK](http://docs.aws.amazon.com/AWSRubySDK/latest/frames.html)
+
+```bash
+$ git clone https://github.com/ryandotsmith/amzn-ship.git
+$ cd amzn-ship
+# cp sample.env .env
+$ echo '.env' >>.gitignore
+# Make changes to .env
+$ export $(cat env)
+$ bundle install
+$ bundle exec bin/release my-app production ~/src/my-app
+```
 
 ## Relationship to AMZN-base
 A **base subsystem** must produce an AMI with a program named `/home/deploy/bin/deploy` which takes a release URL as an argument. The deploy program is responsible for downloading the app and starting the app's processes.
