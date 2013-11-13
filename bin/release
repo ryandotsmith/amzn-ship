@@ -11,12 +11,20 @@ module Releaser
   RELEASE_PREFIX = ENV['RELEASE_PREFIX']
 
   def self.execute(app, env, src_location)
+    create_bucket_if_needed
     ver = tag_source(src_location)
     archive = archive_source(app, env, ver, src_location)
     put_source(app, env, ver, archive)
     copy_config(app, env, ver)
     cleanup_archive(archive)
     $stdout.puts("release=#{ver}")
+  end
+
+  def self.create_bucket_if_needed
+    bucket = s3.buckets[BASE_RELEASE_URL.host]
+    if !bucket.exists?
+      s3.buckets.create(BASE_RELEASE_URL.host)
+    end
   end
 
   def self.copy_config(app, env, ver)
