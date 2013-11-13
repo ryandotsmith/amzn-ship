@@ -3,9 +3,9 @@
 require 'aws'
 
 module ASGUpdater
-  BASE_RELEASE = "s3://amzn-releases.koa.la"
+  BASE_RELEASE = ENV['RELEASE_BUCKET']
   ZONES = ["us-east-1a", "us-east-1b", "us-east-1d"]
-  ITYPE = 'm3.2xlarge'
+  ITYPE = ENV['INSTANCE_TYPE']
 
   def self.execute(app, env, ami)
     release = BASE_RELEASE + "/#{app}/#{env}/current"
