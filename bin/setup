@@ -138,7 +138,7 @@ module Setup
         unhealthy_threshold: 2,
         interval: 5,
         timeout: 4,
-        target: "HTTP:8000/"
+        target: "HTTP:8000/health"
       )
       $stdout.puts("at=configured-elb-healthcheck elb=#{lb.name}")
       return lb
