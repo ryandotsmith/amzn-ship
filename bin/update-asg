@@ -4,7 +4,7 @@ require 'aws'
 
 module ASGUpdater
   BASE_RELEASE = ENV['RELEASE_BUCKET']
-  ZONES = ["us-east-1a", "us-east-1b", "us-east-1d"]
+  ZONES = ENV['ZONES'].split(',').map(&:trim)
   ITYPE = ENV['INSTANCE_TYPE']
 
   def self.execute(app, env, ami)
