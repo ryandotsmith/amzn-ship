@@ -3,18 +3,19 @@
 require 'aws'
 
 module ASGUpdater
+  AMI = ENV['AMI']
   BASE_RELEASE = ENV['RELEASE_BUCKET']
   ZONES = ENV['ZONES'].split(',').map(&:trim)
   ITYPE = ENV['INSTANCE_TYPE']
 
-  def self.execute(app, env, ami)
+  def self.execute(app, env)
     release = BASE_RELEASE + "/#{app}/#{env}/current"
     g = asg.groups[key(app, env)]
     if g.exists?
       g.suspend_all_processes
       $stdout.puts("at=asg-suspended group=#{g.name}")
       old_conf = g.launch_configuration
-      new_conf = create_launch_configuration(g, app, env, ami, release)
+      new_conf = create_launch_configuration(g, app, env, AMI, release)
       $stdout.puts("at=asg-launch-config-created group=#{g.name}")
       g.update(launch_configuration: new_conf)
       old_conf.delete
@@ -57,5 +58,5 @@ module ASGUpdater
 end
 
 if $0 == __FILE__
-  ASGUpdater.execute(ARGV[0], ARGV[1], ARGV[2])
+  ASGUpdater.execute(ARGV[0], ARGV[1])
 end
