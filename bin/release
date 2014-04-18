@@ -64,9 +64,9 @@ module Releaser
   end
 
   def self.latest_tag(location)
-    cmd = "git tag -l |  grep '#{RELEASE_PREFIX}[0-9]' | sort -nr | head -n 1"
+    cmd = "git tag -l |  grep '#{RELEASE_PREFIX}[0-9]' | sed 's/#{RELEASE_PREFIX}//' | sort -nr | head -n 1"
     res = `cd #{location} && #{cmd}`.strip
-    res.length.zero? ? "#{RELEASE_PREFIX}0" : res
+    res.length.zero? ? "#{RELEASE_PREFIX}0" : "#{RELEASE_PREFIX}#{res}"
   end
 
   def self.cleanup_archive(location)
