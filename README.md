@@ -19,7 +19,7 @@ $ bundle exec bin/release my-app production ~/src/my-app
 ```
 
 ## Relationship to AMZN-base
-A **base subsystem** must produce an AMI with a program named `/home/deploy/bin/deploy` which takes a release URL as an argument. The deploy program is responsible for downloading the app and starting the app's processes.
+A **base subsystem** must produce an AMI with a program named `/mnt/deploy/bin/deploy` which takes a release URL as an argument. The deploy program is responsible for downloading the app and starting the app's processes.
 
 The id of the AMI produced by AMZN-base must be exported into the environment of AMZN-ship.
 

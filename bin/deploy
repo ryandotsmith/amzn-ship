@@ -5,7 +5,7 @@ require 'aws'
 
 module Deployer
   BASE_RELEASE = ENV['RELEASE_BUCKET']
-  CMD = "/home/deploy/bin/deploy"
+  CMD = "/mnt/deploy/bin/deploy"
   KEYS = "./amzn.pem"
 
   def self.execute(app, env, ver)

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -ex
-dir="/home/deploy"
+
+# Ensure the deploy user has write access to ephemeral storage
+sudo mkdir /mnt/deploy
+sudo chgrp -R deploy /mnt
+sudo chmod -R g+w /mnt
+
+dir="/mnt/deploy"
 cmd="bin/deploy {{RELEASE_URL}}"
 echo "at=start-user-data cmd=$cmd pwd=`pwd` user=`whoami`" | logger -t deploy
 su deploy -c "cd $dir; $cmd | logger -t deploy"
