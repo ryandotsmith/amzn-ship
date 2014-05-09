@@ -75,8 +75,9 @@ module Releaser
 
   def self.archive_source(app, env, ver, location)
     tar_name = [app, env].join('-') + '.tar.gz'
-    `cd #{location} && git archive -o #{tar_name} #{ver}`
-    [location, tar_name].join('/')
+    output_location = "/tmp/#{tar_name}"
+    `cd #{location}; tar -cz . > #{output_location}`
+    output_location
   end
 
   def self.s3
