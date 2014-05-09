@@ -8,7 +8,7 @@ module Setup
   KEY_PAIR_NAME = 'amzn'
   BASE_RELEASE = ENV['RELEASE_BUCKET']
   ROLE_NAME = 'amzn'
-  ZONES = ENV['ZONES'].split(',').map(&:trim)
+  ZONES = ENV['ZONES'].split(',').map(&:strip)
   AMI = ENV['AMI']
   ITYPE = ENV['INSTANCE_TYPE']
   COOLDOWN = ENV['ASG_COOLDOWN'].to_i
