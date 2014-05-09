@@ -156,13 +156,7 @@ module Setup
         security_groups: [SECURITY_GROUP_NAME],
         key_pair: KEY_PAIR_NAME,
         user_data: compile_user_data(app, release),
-        iam_instance_profile: ROLE_NAME,
-        block_device_mappings: [{
-            device_name: "/dev/sda1",
-            ebs: {
-              volume_size: VOLUME_SIZE
-            }
-        }]
+        iam_instance_profile: ROLE_NAME
       )
       $stdout.puts("at=create-launch-config")
       return conf
