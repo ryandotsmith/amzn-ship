@@ -1,5 +1,12 @@
 #!/bin/bash
 set -ex
+
+# Since EC2 manages /mnt directory, the only
+# meaningful time to change the permissions on the dir
+# is when we have the instance up and running.
+sudo chgrp -R deploy /mnt
+sudo chmod -R g+w /mnt
+
 dir="/home/deploy"
 cmd="bin/deploy {{RELEASE_URL}}"
 echo "at=start-user-data cmd=$cmd pwd=`pwd` user=`whoami`" | logger -t deploy
