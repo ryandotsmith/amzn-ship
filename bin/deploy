@@ -7,8 +7,10 @@ module Deployer
   BASE_RELEASE = ENV['RELEASE_BUCKET']
   CMD = "/home/deploy/bin/deploy"
   KEYS = "./amzn.pem"
+  REGION = ENV['AWS_DEFAULT_REGION']
 
   def self.execute(app, env, ver)
+    AWS.config(region: REGION) if REGION
     ver = 'current' if ver.nil? || ver == ""
     g = asg.groups[key(app, env)]
     if g.exists?
@@ -34,10 +36,7 @@ module Deployer
 
   def self.asg
     @asg ||= begin
-      AWS::AutoScaling.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::AutoScaling.new
     end
   end
 
