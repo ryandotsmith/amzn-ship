@@ -9,8 +9,10 @@ module Releaser
   BASE_RELEASE = ENV['RELEASE_BUCKET']
   BASE_RELEASE_URL = URI(BASE_RELEASE)
   RELEASE_PREFIX = ENV['RELEASE_PREFIX']
+  REGION = ENV['AWS_DEFAULT_REGION']
 
   def self.execute(app, env, src_location)
+    AWS.config(region: REGION) if REGION
     create_bucket_if_needed
     ver = tag_source(src_location)
     archive = archive_source(app, env, ver, src_location)
@@ -82,10 +84,7 @@ module Releaser
 
   def self.s3
     @s3 ||= begin
-      AWS::S3.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::S3.new
     end
   end
 

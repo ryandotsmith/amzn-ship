@@ -15,8 +15,10 @@ module Setup
   MIN = ENV['MIN_INSTANCES'].to_i
   MAX = ENV['MAX_INSTANCES'].to_i
   VOLUME_SIZE = ENV['VOLUME_SIZE'].to_i
+  REGION = ENV['AWS_DEFAULT_REGION']
 
   def self.execute(app, env)
+    AWS.config(region: REGION) if REGION
     create_sec_group
     create_key_pair
     create_role
@@ -180,37 +182,25 @@ module Setup
 
   def self.iam
     @iam ||= begin
-      AWS::IAM.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::IAM.new
     end
   end
 
   def self.ec2
     @ec2 ||= begin
-      AWS::EC2.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::EC2.new
     end
   end
 
   def self.asg
     @asg ||= begin
-      AWS::AutoScaling.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::AutoScaling.new
     end
   end
 
   def self.elb
     @elb ||= begin
-      AWS::ELB.new(
-        :access_key_id => ENV['AWS_ACCESS_KEY_ID'],
-        :secret_access_key => ENV['AWS_SECRET_ACCESS_KEY']
-      )
+      AWS::ELB.new
     end
   end
 
