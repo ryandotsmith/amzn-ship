@@ -16,7 +16,6 @@ module Setup
   MAX = ENV['MAX_INSTANCES'].to_i
   VOLUME_SIZE = ENV['VOLUME_SIZE'].to_i
   REGION = ENV['AWS_DEFAULT_REGION']
-  VPC_ID = ENV['VPC_ID']
 
   def self.execute(app, env)
     AWS.config(region: REGION) if REGION
@@ -109,7 +108,6 @@ module Setup
     else
       g = asg.groups.create(key(app, env),
         launch_configuration: lconfig(app, env, release).name,
-        vpc_zone_identifier: VPC_ID,
         availability_zones: ZONES,
         load_balancers: [find_or_create_elb(app, env)],
         min_size: MIN,
