@@ -9,5 +9,5 @@ sudo chmod -R g+w /mnt
 
 dir="/home/deploy"
 cmd="bin/deploy {{RELEASE_URL}}"
-echo "at=start-user-data cmd=$cmd pwd=`pwd` user=`whoami`" | logger -t deploy
+echo "at=start-deploy cmd=\"$cmd\" pwd=`pwd` user=`whoami`" | logger -t deploy
 su deploy -c "cd $dir; $cmd | logger -t deploy"
