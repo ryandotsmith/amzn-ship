@@ -10,7 +10,7 @@ AMZN-ship is an implementation of the architecture defined in the [**Application
 ```bash
 $ git clone https://github.com/ryandotsmith/amzn-ship.git
 $ cd amzn-ship
-# cp sample.env .env
+$ cp sample.env .env
 # Make changes to .env
 $ export $(cat env)
 $ bundle install
