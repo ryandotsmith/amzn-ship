@@ -11,7 +11,6 @@ AMZN-ship is an implementation of the architecture defined in the [**Application
 $ git clone https://github.com/ryandotsmith/amzn-ship.git
 $ cd amzn-ship
 # cp sample.env .env
-$ echo '.env' >>.gitignore
 # Make changes to .env
 $ export $(cat env)
 $ bundle install
