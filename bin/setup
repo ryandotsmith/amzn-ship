@@ -24,7 +24,7 @@ module Setup
     create_role
     create_role_policy
     create_policy
-    create_asg(app, env, BASE_RELEASE + "/#{app}/#{env}/current")
+    create_asg(app, env, BASE_RELEASE + "/#{app}/release/#{env}")
   end
 
   def self.create_role
@@ -100,21 +100,21 @@ module Setup
     end
   end
 
-  def self.create_asg(app, env, release)
+  def self.create_asg(app, env, base)
     g = asg.groups[key(app, env)]
     if g.exists?
       $stdout.puts("at=asg-exists group=#{g.name}")
       return g
     else
       g = asg.groups.create(key(app, env),
-        launch_configuration: lconfig(app, env, release).name,
+        launch_configuration: lconfig(app, env, base).name,
         availability_zones: ZONES,
         load_balancers: [find_or_create_elb(app, env)],
         min_size: MIN,
         max_size: MAX,
         default_cooldown: COOLDOWN,
         desired_capacity: MIN,
-        tags: [{key: "Release", value: release, propagate_at_launch: true}])
+        tags: [{key: "Release", value: base, propagate_at_launch: true}])
       $stdout.puts("at=create-group new-group=#{g.name}")
       return g
     end
@@ -148,7 +148,7 @@ module Setup
     end
   end
 
-  def self.lconfig(app, env, release)
+  def self.lconfig(app, env, base)
     conf = asg.launch_configurations[key(app, env)]
     if  conf.exists?
       $stdout.puts("at=reuse-launch-config config=#{conf.name}")
@@ -157,7 +157,7 @@ module Setup
       conf = asg.launch_configurations.create(key(app, env), AMI, ITYPE,
         security_groups: [SECURITY_GROUP_NAME],
         key_pair: KEY_PAIR_NAME,
-        user_data: compile_user_data(app, release),
+        user_data: compile_user_data(app, base),
         iam_instance_profile: ROLE_NAME,
         block_device_mappings: [{
           device_name: "/dev/sda1",
@@ -173,10 +173,10 @@ module Setup
     [app, env].join('-')
   end
 
-  def self.compile_user_data(app, release)
+  def self.compile_user_data(app, base)
     script = File.read("templates/user-data")
     script.gsub!("{{APP}}", app)
-    script.gsub!("{{RELEASE_URL}}", release)
+    script.gsub!("{{BASE_URL}}", base)
     return script
   end
 
