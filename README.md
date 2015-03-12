@@ -103,14 +103,15 @@ $ bundle exec bin/deploy my-app staging r1
 ...
 ```
 
-### Update Base
-**Synopsis:** Update's the ASG with a new AMI id.
+### Update ASG
+**Synopsis:** Updates the ASG with a new AMI id.
 
 After amzn-base has produced a new AMI (e.g. Updated system package for security patch) the instances in a group need to be cycled with a new AMI id. This command will update the ASG configuration so that new instances will have the new base image. Next the operator must kill all instances on the old image id. The ASG will boot new instances in place of the old instances.
 
 Example:
 ```bash
-$ bundle exec bin/update-base
+$ export AMI=ami-newid
+$ bundle exec bin/update-asg my-app staging
 ```
 
 ### Terminate
