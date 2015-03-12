@@ -32,8 +32,6 @@ module ASGUpdater
   end
 
   def self.create_launch_configuration(g, app, env, ami, release)
-    puts  compile_user_data(app, release)
-    exit
     asg.launch_configurations.create(key(app, env)+"-#{Time.now.to_i}", ami, ITYPE,
       security_groups: [SECURITY_GROUP_NAME],
       key_pair: KEY_PAIR_NAME,
