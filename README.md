@@ -23,7 +23,7 @@ A **base subsystem** must produce an AMI with a program named `/home/deploy/bin/
 The id of the AMI produced by AMZN-base must be exported into the environment of AMZN-ship.
 
 ```bash
-$ export AMZN_AMI=abc123
+$ export AMI=abc123
 ```
 
 ## Operations
@@ -37,11 +37,14 @@ $ export AMZN_AMI=abc123
 ### Setup
 **Synopsis:** Idempotentaly create resources in AWS region.
 
-There are a few AWS requirements that need to be satisfied before using AMZN-ship.
+There are a few AWS requirements that need to be satisfied before using AMZN-ship. Setup will create the following resources if they do not exist:
 
 1. Security Group
 2. Key Pair
 3. IAM instance profile with S3 read access
+4. ASG, Launch Config, and ELB
+
+NOTE: The application deployed on the instances should expose an http endpoint `/health` on port 8000, which will be used by the ELB to determine instance health.
 
 The setup script takes 2 arguments:
 
@@ -65,7 +68,7 @@ at=create-group new-group=my-app-production
 ### Release
 **Synopsis:** Tags and uploads code to S3 and moves the S3 latest release pointer.
 
-The release program assumes the directory of the app is a git repository. The program will create a tag on HEAD using a versioning scheme of **rX** where X is a monotonically increasing integer. Next, the program will use GIT-ARCHIVE(1) to create a tar.gz file of the newly created tag. Finally, the tar.gz file is uploaded to an S3 bucket. The S3 directory will resemble the following structure:
+The release program assumes the directory of the app is a git repository. The program will create a tag on HEAD using a versioning scheme of **rX** where X is a monotonically increasing integer. Next, the program will use TAR(1) to create a tar.gz file of the newly created tag. Finally, the tar.gz file is uploaded to an S3 bucket. The S3 directory will resemble the following structure:
 
 ```
 .
