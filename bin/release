@@ -78,7 +78,7 @@ module Releaser
   def self.archive_source(app, env, ver, location)
     tar_name = [app, env].join('-') + '.tar.gz'
     output_location = "/tmp/#{tar_name}"
-    `cd #{location}; tar -cz . > #{output_location}`
+    `cd #{location}; git archive --format=tar.gz --output=#{output_location} #{latest_tag(location)}`
     output_location
   end
 
