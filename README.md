@@ -44,6 +44,8 @@ There are a few AWS requirements that need to be satisfied before using AMZN-shi
 3. IAM instance profile with S3 read access
 4. ASG, Launch Config, and ELB
 
+NOTE: The application deployed on the instances should expose an http endpoint `/health` on port 8000, which will be used by the ELB to determine instance health.
+
 The setup script takes 2 arguments:
 
 1. App name (e.g. my-app)
