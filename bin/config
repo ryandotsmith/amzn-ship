@@ -1,0 +1,97 @@
+#!/usr/bin/env ruby
+
+require 'uri'
+require 'aws'
+
+class Configurer
+  BASE_RELEASE_URL = URI(ENV['RELEASE_BUCKET'])
+  REGION = ENV['AWS_DEFAULT_REGION']
+
+  attr_accessor :app, :env
+
+  def initialize(app, env)
+    self.app = app
+    self.env = env
+  end
+
+  def execute(cmd, args)
+    AWS.config(region: REGION) if REGION
+    create_bucket_if_needed
+
+    self.send(cmd, args) if self.respond_to?(cmd)
+  end
+
+  def set(args)
+    env = get_current_env
+    args.each {|var| env.merge!(env_var(var))}
+    write_env(env)
+  end
+
+  def unset(args)
+    env = get_current_env
+    args.each {|var| env.delete(var)}
+    write_env(env)
+  end
+
+  def put(args)
+    filepath = args[0]
+    env = parse_env(File.read(filepath))
+    write_env(env)
+  end
+
+  def get_current_env
+    parse_env(env_file.exists? ? env_file.read : "")
+  end
+
+  def parse_env(envtext)
+    envtext.each_line.reduce({}) do |h, line|
+      h.merge(env_var(line))
+    end
+  end
+
+  def env_var(text)
+    if matches = /([A-Z_][A-Z0-9_]+)+=(.+)/.match(text)
+      {matches[1] => safe_quote(matches[2])}
+    else
+      {}
+    end
+  end
+
+  def safe_quote(text)
+    text = "\"#{text}\"" if text =~ /\s/ && text[0] != '"'
+    text
+  end
+
+  def create_bucket_if_needed
+    bucket = s3.buckets[BASE_RELEASE_URL.host]
+    if !bucket.exists?
+      s3.buckets.create(BASE_RELEASE_URL.host)
+    end
+  end
+
+  def write_env(env)
+    content = Hash[env.sort].each.reduce("") do |text, (k, v)|
+      text + "export #{k}=#{v}\n"
+    end
+    env_file.write(content)
+    $stdout.puts("wrote env:")
+    $stdout.puts(content)
+  end
+
+  def s3
+    @s3 ||= AWS::S3.new
+  end
+
+  def bucket
+    @bucket ||= s3.buckets[BASE_RELEASE_URL.host]
+  end
+
+  def env_file
+    bucket.objects["#{app}/#{env}/env"]
+  end
+
+end
+
+if $0 == __FILE__
+  Configurer.new(ARGV[1], ARGV[2]).execute(ARGV[0], ARGV[3..-1])
+end
